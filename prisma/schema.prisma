@@ -1,0 +1,75 @@
+// Davoren Family photo/video site schema.
+// Models: User (admin/family uploaders), Album, Photo, ShareLink.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  photos     Photo[]
+  shareLinks ShareLink[]
+}
+
+model Album {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  coverPhotoId String?  @unique
+  createdAt    DateTime @default(now())
+
+  photos     Photo[]
+  shareLinks ShareLink[]
+}
+
+model Photo {
+  id               String    @id @default(cuid())
+  s3Key            String    @unique
+  thumbnailS3Key   String?
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  width            Int?
+  height           Int?
+  takenAt          DateTime?
+  uploadedAt       DateTime  @default(now())
+
+  uploaderId String
+  uploader   User   @relation(fields: [uploaderId], references: [id])
+
+  albumId String?
+  album   Album?  @relation(fields: [albumId], references: [id])
+
+  @@index([albumId])
+  @@index([uploaderId])
+  @@index([takenAt])
+}
+
+// A password-protected shareable link to an album.
+// Visitors enter the password on /share/[token]; the server compares against passwordHash.
+model ShareLink {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  passwordHash String
+  name         String?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  albumId String
+  album   Album  @relation(fields: [albumId], references: [id])
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  @@index([albumId])
+}
